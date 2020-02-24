@@ -145,7 +145,7 @@ def get_nodes_in_grid(lon, lat):
         ret = cursor.fetchall()
         leng = len(ret)
         # print(leng)
-        if leng < 5:
+        if leng < 5 :
             lon_step += 0.00001141 * 5 
             lat_step += 0.00000899 * 5
         else:
@@ -177,6 +177,7 @@ def calculate_the_transition_probability():
 
 
 def main():
+    # 计算初始时的空间聚类
     spatial_sample = [[lon[i], lat[i]] for i in range(len(lon))]
     y_pred = KMeans(n_clusters=KAPPA, random_state=900).fit_predict(spatial_sample)
     with open('init_spatial_cluster_pred.txt', 'w+') as ff:
@@ -186,22 +187,24 @@ def main():
     for idx, cluster_id in enumerate(y_pred):
         spatial_cluster[cluster_id].append(idx)
     
-    for turn in tqdm(range(5), desc='Working...'):
+    for turn in tqdm(range(2), desc='Working...'):
+        # 根据spatial cluster划分transition cluster
         last = 0
         probs = calculate_the_transition_probability()
         transition_sample = probs
-        # print(transition_sample[:3])
         transition_pred = KMeans(n_clusters=K_T, random_state=900).fit_predict(transition_sample)
 
         for item in transition_cluster:
             item.clear()
+        # 聚类完成后, 将对应的点放到对应的list中
         for idx, item in enumerate(transition_pred):
             transition_cluster[item].append(idx)
         tmp_spatial_list = []
         for spatial_cluster_item in spatial_cluster:
             spatial_cluster_item.clear()
+
+        # 对每一个transition cluster做一个空间聚类
         for idx, item in enumerate(transition_cluster):
-            print('len(item) = %d\n' % len(item))
             if len(item) == 0: continue
             tmp_spatial_list.clear()
             for k in item:
@@ -217,16 +220,16 @@ def main():
             # debug
             n = len(tmp_spatial_list)
             N = len(nodes)
+            # size是每一个空间聚类的大小
             size = math.floor((n * KAPPA) / N + 1 / 2)
-            print('size = %d\n' % size)
             spatial_pred = KMeans(n_clusters=size, random_state=900).fit_predict(sub_spatial_sample)
+            # 对每一次空间聚类的出来的结果都要做偏移处理, 从而使得最终结果是正确的
             spatial_pred = [_item + last for _item in spatial_pred]
             last = max(spatial_pred) + 1
 
             for index in range(len(tmp_spatial_list)):
                 spatial_cluster[spatial_pred[index]].append(tmp_spatial_list[index])
         
-        print(spatial_cluster)
         # log
         with open('./run-log-file.txt', 'a') as log_file:
             for j, debug_item in enumerate(spatial_cluster):
@@ -238,7 +241,7 @@ def main():
             # log_file.close()
         # log
 
-    # result
+    # 输出结果, 可以用该结果来画图
     with open('./data/spatial-cluster.txt', 'w+') as f:
         for j, spatial_cluster_result_item in enumerate(spatial_cluster):
             f.write('%d :' % j)
