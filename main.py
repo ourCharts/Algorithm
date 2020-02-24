@@ -9,8 +9,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from time import sleep
 
-KAPPA = 64
-K_T = 20
+KAPPA = 10
+K_T = 5
 conn = pymysql.connect(host='localhost', user='root', port=3308,
                        passwd='', db='taxidb', charset='utf8')
 cursor = conn.cursor(pymysql.cursors.SSCursor)
@@ -154,18 +154,20 @@ def get_nodes_in_grid(lon, lat):
 
 
 def calculate_the_transition_probability():
-    transition_probability = [KAPPA * [0] for i in range(len(nodes))]  # B_ij 
+    transition_probability = [(KAPPA + 2) * [0] for i in range(len(nodes))]  # B_ij 
+    index_file = open('index_log.txt', 'a')
     for idx, node_item in tqdm(enumerate(nodes), desc='Calculating transition probabilities'):
         # if idx > 1: break
         node_lon = node_item[0]
         node_lat = node_item[1]
         ans = get_nodes_in_grid(node_lon, node_lat)
         ans_len = float(len(ans))
-        probability = [0 for i in range(KAPPA)]  # B_ij
+        probability = [0 for i in range(KAPPA + 2)]  # B_ij
         for ans_item in ans:
             end_lon = ans_item[5]
             end_lat = ans_item[6]
             in_which_cluster = get_in_which_cluster(end_lon, end_lat)
+            index_file.write('%d\n' % in_which_cluster)
             probability[in_which_cluster] += 1
         for pro_idx, probability_item in enumerate(probability):
             probability[pro_idx] = float(probability[pro_idx])
@@ -173,6 +175,7 @@ def calculate_the_transition_probability():
         for j in range(len(transition_probability[idx])):
             transition_probability[idx][j] = probability[j]
 
+    index_file.close()
     return transition_probability
 
 
@@ -187,7 +190,7 @@ def main():
     for idx, cluster_id in enumerate(y_pred):
         spatial_cluster[cluster_id].append(idx)
     
-    for turn in tqdm(range(2), desc='Working...'):
+    for turn in tqdm(range(3), desc='Working...'):
         # 根据spatial cluster划分transition cluster
         last = 0
         probs = calculate_the_transition_probability()
@@ -222,7 +225,9 @@ def main():
             N = len(nodes)
             # size是每一个空间聚类的大小
             size = math.floor((n * KAPPA) / N + 1 / 2)
-            spatial_pred = KMeans(n_clusters=size, random_state=900).fit_predict(sub_spatial_sample)
+            kmeans = KMeans(n_clusters=size, random_state=900)
+            spatial_pred = kmeans.fit_predict(sub_spatial_sample)
+            _centers = kmeans.cluster_centers_.T
             # 对每一次空间聚类的出来的结果都要做偏移处理, 从而使得最终结果是正确的
             spatial_pred = [_item + last for _item in spatial_pred]
             last = max(spatial_pred) + 1
