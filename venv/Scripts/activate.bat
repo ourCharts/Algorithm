@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set "VIRTUAL_ENV=D:\Pycharm-project\ICDE\venv"
+set "VIRTUAL_ENV=D:\Pycharm-project\check-in-which-cluster\venv"
 
 if not defined PROMPT (
     set "PROMPT=$P$G"

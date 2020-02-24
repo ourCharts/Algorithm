@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="D:\Pycharm-project\ICDE\venv"
+VIRTUAL_ENV="D:\Pycharm-project\check-in-which-cluster\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
