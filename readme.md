@@ -53,7 +53,7 @@ node-list.csv：包含osm地图上的所有路口点。共有四个字段，其�
 
   主要运行部分。其中包含部分打印日志的代码，方便debug
 
-#### 重要变量
+#### 重要变量/参数
 
 spatial_cluster：一个200行的二维list，对于第$i$行，其中存放的是属于编号为$i$的空间聚类的点的lsh_id
 
@@ -62,3 +62,5 @@ transition_cluster：一个200行的二维list，对于第$i$行，其中存放�
 KAPPA：在做空间聚类划分时，将所有点划分成KAPPA个聚类
 
 K_T：在做转移概率聚类划分时，将所有点划分成K_T个聚类
+
+NODES_NUM_IN_TRANSITION_CALCULATION：计算一个道路点的transition probability时用到的邻近点的数目

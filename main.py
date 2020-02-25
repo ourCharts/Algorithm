@@ -11,6 +11,7 @@ from time import sleep
 
 KAPPA = 10
 K_T = 5
+NODES_NUM_IN_TRANSITION_CALCULATION = 50
 conn = pymysql.connect(host='localhost', user='root', port=3308,
                        passwd='', db='taxidb', charset='utf8')
 cursor = conn.cursor(pymysql.cursors.SSCursor)
@@ -145,7 +146,7 @@ def get_nodes_in_grid(lon, lat):
         ret = cursor.fetchall()
         leng = len(ret)
         # print(leng)
-        if leng < 5 :
+        if leng < NODES_NUM_IN_TRANSITION_CALCULATION:
             lon_step += 0.00001141 * 5 
             lat_step += 0.00000899 * 5
         else:
@@ -190,12 +191,16 @@ def main():
     for idx, cluster_id in enumerate(y_pred):
         spatial_cluster[cluster_id].append(idx)
     
-    for turn in tqdm(range(3), desc='Working...'):
+    result_cluster_centers = []
+    for turn in tqdm(range(1), desc='Working...'):
         # 根据spatial cluster划分transition cluster
         last = 0
         probs = calculate_the_transition_probability()
         transition_sample = probs
         transition_pred = KMeans(n_clusters=K_T, random_state=900).fit_predict(transition_sample)
+        with open('./data/transition_cluster_%d.txt' % turn, 'w+') as transition_cluster_file:
+            for kk in transition_pred:
+                transition_cluster_file.write('%d ' % kk)
 
         for item in transition_cluster:
             item.clear()
@@ -227,14 +232,17 @@ def main():
             size = math.floor((n * KAPPA) / N + 1 / 2)
             kmeans = KMeans(n_clusters=size, random_state=900)
             spatial_pred = kmeans.fit_predict(sub_spatial_sample)
-            _centers = kmeans.cluster_centers_.T
+            _centers = kmeans.cluster_centers_
+            if turn == 0:
+                result_cluster_centers = _centers
+            
             # 对每一次空间聚类的出来的结果都要做偏移处理, 从而使得最终结果是正确的
             spatial_pred = [_item + last for _item in spatial_pred]
             last = max(spatial_pred) + 1
 
             for index in range(len(tmp_spatial_list)):
                 spatial_cluster[spatial_pred[index]].append(tmp_spatial_list[index])
-        
+
         # log
         with open('./run-log-file.txt', 'a') as log_file:
             for j, debug_item in enumerate(spatial_cluster):
@@ -254,7 +262,12 @@ def main():
             for sub_item in spatial_cluster_result_item:
                 f.write('%d ' % sub_item)
             f.write('\n')
-        # f.close()
+    print(result_cluster_centers)
+    with open('./data/spatial_cluster_centers.txt', 'w+') as centers_file:
+        for row in result_cluster_centers:
+            for col in row:
+                centers_file.write('%d ' % col)
+            centers_file.write('\n')
     # result
 
     cursor.close()
