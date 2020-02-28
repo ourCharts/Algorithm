@@ -64,3 +64,5 @@ KAPPA：在做空间聚类划分时，将所有点划分成KAPPA个聚类
 K_T：在做转移概率聚类划分时，将所有点划分成K_T个聚类
 
 NODES_NUM_IN_TRANSITION_CALCULATION：计算一个道路点的transition probability时用到的邻近点的数目
+
+ITERATION_TIME：迭代次数

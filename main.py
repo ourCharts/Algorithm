@@ -9,27 +9,18 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from time import sleep
 
-KAPPA = 10
-K_T = 5
+KAPPA = 24
+K_T = 8
 NODES_NUM_IN_TRANSITION_CALCULATION = 50
+ITERATION_TIME = 3
+spatial_cluster_centers = []
 conn = pymysql.connect(host='localhost', user='root', port=3308,
                        passwd='', db='taxidb', charset='utf8')
 cursor = conn.cursor(pymysql.cursors.SSCursor)
 
-# 从数据库中得到一个order记录
-def get_an_order(idx):
-    sql = 'SELECT start_longitude, start_latitude, end_longitude, end_latitude FROM myorder LIMIT %d, 1' % (
-        idx - 1)
-    cursor.execute(sql)
-    ret = cursor.fetchall()
-    return ret[0]
 
-
-# info = get_an_order(1)
-
-df = pd.read_csv('./data/node-list.csv')
+df = pd.read_csv('./data/node-list-updated.csv')
 node_id = df.loc[:, 'real_id']
-# cluster_id = df.loc[:, 'cluster_id']
 lon = df.loc[:, 'lon']
 lat = df.loc[:, 'lat']
 length = len(lon)
@@ -65,74 +56,22 @@ def get_distance(lon1, lat1, lon2, lat2):
     ret = round(ret * 10000) / 10000
     return ret * 1000
 
-def process_out_of_range(pos):
-    leng = len(sorted_lat)
-    if pos < 0:
-        pos += 1
-    if pos >= leng:
-        pos -= 1
-    return pos
 
-# 计算与某个经纬点距离最近的路口点, 返回结果对应的nodeid
-def get_closest_node(lon, lat):
-    min_distance = int(1e10)
-    real_id_val = -1
-    lsh_id_val = -1
-    """for idx, item in enumerate(nodes):
-        distance = get_distance(item[0], item[1], lon, lat)
-        if distance < min_distance:
-            min_distance = distance
-            real_id_val = item[3]
-            lsh_id_val = idx
-    return real_id_val, lsh_id_val, min_distance"""
-    lon_step = 0.00001141 * 20  # 20m
-    lat_step = 0.00000899 * 20  # 20m
-    tmp_list = []
-    while True:
-        lefbnd = bisect.bisect_left(sorted_lon, lon - lon_step)
-        lefbnd = process_out_of_range(lefbnd)
-        
-        rigbnd = bisect.bisect_right(sorted_lon, lon + lon_step)
-        rigbnd = process_out_of_range(rigbnd)
-        
-        upbnd = bisect.bisect_right(sorted_lat, lat + lat_step)
-        upbnd = process_out_of_range(upbnd)
-        
-        downbnd = bisect.bisect_left(sorted_lat, lat - lat_step)
-        downbnd = process_out_of_range(downbnd)
-        tmp_list.clear()
-        for ii in range(lefbnd, rigbnd + 1):
-            if nodes_sorted_by_lon[ii][1] <= sorted_lat[upbnd] and nodes_sorted_by_lon[ii][1] >= sorted_lat[downbnd]:
-                tmp_list.append(nodes_sorted_by_lon[ii])
-        if len(tmp_list) != 0:
-            break
-        else:
-            lon_step += 0.00001141 * 10
-            lat_step += 0.00000899 * 10
-    for idx, item in enumerate(tmp_list):
-        distance = get_distance(item[0], item[1], lon, lat)
-        if distance < min_distance:
-            min_distance = distance
-            real_id_val = item[3]
-            lsh_id_val = item[2]
-    return real_id_val, lsh_id_val, min_distance
-
-# 计算某个经纬点位于哪一个cluster中(该经纬点来自于order, 不在nodes中)
 def get_in_which_cluster(lon, lat):
-    # print('lon = %f, lat = %f' % (lon, lat))
-    closest_node_real_id, closest_node_lsh_id, mindis = get_closest_node(
-        lon, lat)
-    # print('mindis = %f, closest_node_lsh_id = %f, closest_node_real_id = %f' % (mindis, closest_node_lsh_id, closest_node_real_id))
-    for k in range(len(spatial_cluster)):
-        if closest_node_lsh_id in spatial_cluster[k]:
-            return k
-    print("Can't find in which cluster!")
+    mindis = int(1e10)
+    ret = -1
+    for cluster_id ,center_it in enumerate(spatial_cluster_centers):
+        dis = get_distance(lon, lat, center_it[0], center_it[1])
+        if dis < mindis:
+            mindis = dis
+            ret = cluster_id
+    return ret
 
 
 # 通过一个网格, 得到距离某个经纬点最近的若干个订单开始点, 通过这些订单开始点近似计算这一经纬点的转移概率
 def get_nodes_in_grid(lon, lat):
-    lon_step = 0.00001141 * 5  # 5m
-    lat_step = 0.00000899 * 5  # 5m
+    lon_step = 0.00001141 * 50  # 5m
+    lat_step = 0.00000899 * 50  # 5m
     ret = []
     while True:
         lef_lon = lon - lon_step
@@ -183,16 +122,15 @@ def calculate_the_transition_probability():
 def main():
     # 计算初始时的空间聚类
     spatial_sample = [[lon[i], lat[i]] for i in range(len(lon))]
-    y_pred = KMeans(n_clusters=KAPPA, random_state=900).fit_predict(spatial_sample)
-    with open('init_spatial_cluster_pred.txt', 'w+') as ff:
-        for col in y_pred:
-            ff.write('%d\n' % col)
+    kkmeans = KMeans(n_clusters=KAPPA)
+    y_pred = kkmeans.fit_predict(spatial_sample)
+    for center_it in kkmeans.cluster_centers_:
+        spatial_cluster_centers.append((center_it[0], center_it[1]))
     
     for idx, cluster_id in enumerate(y_pred):
         spatial_cluster[cluster_id].append(idx)
     
-    result_cluster_centers = []
-    for turn in tqdm(range(1), desc='Working...'):
+    for turn in tqdm(range(ITERATION_TIME), desc='Working...'):
         # 根据spatial cluster划分transition cluster
         last = 0
         probs = calculate_the_transition_probability()
@@ -211,30 +149,25 @@ def main():
         for spatial_cluster_item in spatial_cluster:
             spatial_cluster_item.clear()
 
-        # 对每一个transition cluster做一个空间聚类
+        # 对每一个transition cluster做一次空间聚类, 得到新的空间聚类
+        spatial_cluster_centers.clear()
         for idx, item in enumerate(transition_cluster):
             if len(item) == 0: continue
             tmp_spatial_list.clear()
             for k in item:
                 tmp_spatial_list.append(k)
             sub_spatial_sample = [[lon[i], lat[i]] for i in tmp_spatial_list]
-            # debug
-            with open('./run-log-file.txt', 'w+') as log:
-                log.write('spatial sample generated by transition cluster %d\n' % idx)
-                for Debug in sub_spatial_sample:
-                    for Debug_item in Debug:
-                        log.write('%f ' % Debug_item)
-                    log.write('\n')
-            # debug
+            
             n = len(tmp_spatial_list)
             N = len(nodes)
             # size是每一个空间聚类的大小
-            size = math.floor((n * KAPPA) / N + 1 / 2)
+            size = int(np.round(n * KAPPA / N))
             kmeans = KMeans(n_clusters=size, random_state=900)
             spatial_pred = kmeans.fit_predict(sub_spatial_sample)
             _centers = kmeans.cluster_centers_
-            if turn == 0:
-                result_cluster_centers = _centers
+            for center_it in _centers:
+                spatial_cluster_centers.append((center_it[0], center_it[1]))
+            
             
             # 对每一次空间聚类的出来的结果都要做偏移处理, 从而使得最终结果是正确的
             spatial_pred = [_item + last for _item in spatial_pred]
@@ -243,16 +176,6 @@ def main():
             for index in range(len(tmp_spatial_list)):
                 spatial_cluster[spatial_pred[index]].append(tmp_spatial_list[index])
 
-        # log
-        with open('./run-log-file.txt', 'a') as log_file:
-            for j, debug_item in enumerate(spatial_cluster):
-                log_file.write('%d :' % j)
-                log_file.write('\n')
-                for sub_item_ in debug_item:
-                    log_file.write('%d ' % sub_item_)
-                log_file.write('\n')
-            # log_file.close()
-        # log
 
     # 输出结果, 可以用该结果来画图
     with open('./data/spatial-cluster.txt', 'w+') as f:
@@ -262,13 +185,6 @@ def main():
             for sub_item in spatial_cluster_result_item:
                 f.write('%d ' % sub_item)
             f.write('\n')
-    print(result_cluster_centers)
-    with open('./data/spatial_cluster_centers.txt', 'w+') as centers_file:
-        for row in result_cluster_centers:
-            for col in row:
-                centers_file.write('%d ' % col)
-            centers_file.write('\n')
-    # result
 
     cursor.close()
     conn.close()
