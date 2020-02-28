@@ -35,7 +35,8 @@ node-list.csv：包含osm地图上的所有路口点。共有四个字段，其�
 
 * get_closest_node(lon, lat)
 
-  对于经纬度为(lon, lat)的点<img src="http://latex.codecogs.com/gif.latex?p" />，计算osm地图上距离该点最近的点的id。具体计算方法为，将点<img src="http://latex.codecogs.com/gif.latex?p" />纳入一个“网格”中，然后在网格中查找距离其最近的点。网格与网格内的点的计算方法为，通过预先设定的网格大小，计算出上、下、左、右四个边界，然后通过二分查找确定网格内有哪些点。注意，若当前网格内点的数目小于2，则需要扩大网格的规模。
+  对于经纬度为(lon, lat)的点![](http://latex.codecogs.com/gif.latex?\p)，
+  计算osm地图上距离该点最近的点的id。具体计算方法为，将点![](http://latex.codecogs.com/gif.latex?\p)纳入一个“网格”中，然后在网格中查找距离其最近的点。网格与网格内的点的计算方法为，通过预先设定的网格大小，计算出上、下、左、右四个边界，然后通过二分查找确定网格内有哪些点。注意，若当前网格内点的数目小于2，则需要扩大网格的规模。
 
 * get_in_which_cluster(lon, lat):
 
@@ -55,9 +56,9 @@ node-list.csv：包含osm地图上的所有路口点。共有四个字段，其�
 
 #### 重要变量/参数
 
-spatial_cluster：一个200行的二维list，对于第<img src="http://latex.codecogs.com/gif.latex?i" />行，其中存放的是属于编号为$i$的空间聚类的点的lsh_id
+spatial_cluster：一个200行的二维list，对于第![](http://latex.codecogs.com/gif.latex?\i)行，其中存放的是属于编号为$i$的空间聚类的点的lsh_id
 
-transition_cluster：一个200行的二维list，对于第<img src="http://latex.codecogs.com/gif.latex?i" />行，其中存放的是属于编号为<img src="http://latex.codecogs.com/gif.latex?i" />的转移概率聚类的点的lsh_id
+transition_cluster：一个200行的二维list，对于第![](http://latex.codecogs.com/gif.latex?\i)行，其中存放的是属于编号为![](http://latex.codecogs.com/gif.latex?\i)的转移概率聚类的点的lsh_id
 
 KAPPA：在做空间聚类划分时，将所有点划分成KAPPA个聚类
 
