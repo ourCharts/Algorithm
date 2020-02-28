@@ -17,10 +17,6 @@ node-list.csv：包含osm地图上的所有路口点。共有四个字段，其�
 
 在main.py中，包含的函数以及其具体含义分别为：
 
-* get_an_order(idx) 
-
-  从数据库中读取第idx行的记录，这里读取的是myorder表
-
 * rad(deg)
 
   用于将角度转化为弧度
@@ -29,18 +25,9 @@ node-list.csv：包含osm地图上的所有路口点。共有四个字段，其�
 
   计算两个经纬点之间的距离，单位是米
 
-* process_out_of_range(pos)
-
-  处理下标，处理超出list范围的情况
-
-* get_closest_node(lon, lat)
-
-  对于经纬度为(lon, lat)的点![](http://latex.codecogs.com/gif.latex?\\mathbf{p})，
-  计算osm地图上距离该点最近的点的id。具体计算方法为，将点![](http://latex.codecogs.com/gif.latex?\\mathbf{p})纳入一个“网格”中，然后在网格中查找距离其最近的点。网格与网格内的点的计算方法为，通过预先设定的网格大小，计算出上、下、左、右四个边界，然后通过二分查找确定网格内有哪些点。注意，若当前网格内点的数目小于2，则需要扩大网格的规模。
-
 * get_in_which_cluster(lon, lat):
 
-  计算某个经纬点位于哪一个cluster中(该经纬点来自于数据库中的记录)
+  计算某个经纬点位于哪一个cluster中(该经纬点来自于数据库中的记录)。通过聚类中心计算。
 
 * get_nodes_in_grid(lon, lat)
 
